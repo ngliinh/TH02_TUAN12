@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trò chơi đố vui</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f0f8ff;
+            padding: 30px;
+            margin: 0;
+        }
+
+        .quiz-container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        .question,
+        .setup {
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+
+        .options button,
+        .setup select,
+        .start-button {
+            display: block;
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 10px;
+            font-size: 16px;
+            background: #e0f0ff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .options button:hover,
+        .start-button:hover {
+            background: #b3e0ff;
+        }
+
+        .hint,
+        .feedback,
+        .timer {
+            margin-top: 15px;
+            font-style: italic;
+        }
+
+        .score {
+            text-align: right;
+            font-weight: bold;
+            color: #444;
+        }
+
+        .next-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            background: #4CAF50;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .next-button:hover {
+            background: #45a049;
+        }
+
+        .history {
+            margin-top: 30px;
+            font-size: 14px;
+            color: #555;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="quiz-container">
+        <h1>Đố vui kiến thức</h1>
+
+        <div class="setup" id="setup">
+            <label for="numQuestions">Chọn số lượng câu hỏi:</label>
+            <select id="numQuestions">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+            </select>
+            <button class="start-button" id="startBtn">Bắt đầu trò chơi</button>
+        </div>
+
+        <div class="score" id="score" style="display:none">Điểm: 0</div>
+        <div class="timer" id="timer" style="display:none">⏳ Thời gian: 15 giây</div>
+        <div class="question" id="question"></div>
+        <div class="options" id="options"></div>
+        <div class="feedback" id="feedback"></div>
+        <div class="hint" id="hint"></div>
+        <button class="next-button" id="nextBtn" style="display:none">Câu tiếp theo</button>
+        <div class="history" id="history"></div>
+    </div>
+
+    <script>
+        const quiz = [
+            {
+                question: "Thủ đô của Việt Nam là gì?",
+                options: ["Hà Nội", "TP. Hồ Chí Minh", "Đà Nẵng", "Huế"],
+                answer: "Hà Nội",
+                hint: "Đây là nơi có Lăng Chủ tịch Hồ Chí Minh."
+            },
+            {
+                question: "2 + 3 x 4 = ?",
+                options: ["20", "14", "12", "24"],
+                answer: "14",
+                hint: "Hãy nhớ thứ tự phép toán: nhân trước, cộng sau."
+            },
+            {
+                question: "Quốc gia nào có diện tích lớn nhất thế giới?",
+                options: ["Trung Quốc", "Hoa Kỳ", "Canada", "Nga"],
+                answer: "Nga",
+                hint: "Đây là quốc gia kéo dài từ châu Âu sang châu Á."
+            }
+        ];
+
+        let quizPool = [];
+        let current = 0;
+        let score = 0;
+        let timer;
+        let timeLeft = 15;
+
+        const startBtn = document.getElementById('startBtn');
+        const numQuestions = document.getElementById('numQuestions');
+        const setup = document.getElementById('setup');
+        const questionEl = document.getElementById('question');
+        const optionsEl = document.getElementById('options');
+        const feedbackEl = document.getElementById('feedback');
+        const hintEl = document.getElementById('hint');
+        const scoreEl = document.getElementById('score');
+        const timerEl = document.getElementById('timer');
+        const nextBtn = document.getElementById('nextBtn');
+        const historyEl = document.getElementById('history');
+
+        startBtn.addEventListener('click', () => {
+            const selectedCount = parseInt(numQuestions.value);
+            quizPool = shuffleArray(quiz).slice(0, selectedCount);
+            setup.style.display = 'none';
+            scoreEl.style.display = 'block';
+            timerEl.style.display = 'block';
+            score = 0;
+            current = 0;
+            showQuestion();
+        });
+
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        function updateTimer() {
+            timerEl.textContent = `⏳ Thời gian: ${timeLeft} giây`;
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                feedbackEl.textContent = '⏰ Hết thời gian!';
+                hintEl.textContent = `Gợi ý: ${quizPool[current].hint}`;
+                disableOptions();
+                nextBtn.style.display = 'inline-block';
+            }
+            timeLeft--;
+        }
+
+        function startTimer() {
+            clearInterval(timer);
+            timeLeft = 15;
+            updateTimer();
+            timer = setInterval(updateTimer, 1000);
+        }
+
+        function disableOptions() {
+            Array.from(optionsEl.children).forEach(btn => btn.disabled = true);
+        }
+
+        function showQuestion() {
+            const q = quizPool[current];
+            questionEl.textContent = q.question;
+            optionsEl.innerHTML = '';
+            feedbackEl.textContent = '';
+            hintEl.textContent = '';
+            nextBtn.style.display = 'none';
+
+            q.options.forEach(option => {
+                const btn = document.createElement('button');
+                btn.textContent = option;
+                btn.addEventListener('click', () => checkAnswer(option));
+                optionsEl.appendChild(btn);
+            });
+            startTimer();
+        }
+
+        function checkAnswer(selected) {
+            clearInterval(timer);
+            const correct = quizPool[current].answer;
+            if (selected === correct) {
+                feedbackEl.textContent = '🎉 Chính xác!';
+                score++;
+                scoreEl.textContent = `Điểm: ${score}`;
+                hintEl.textContent = '';
+            } else {
+                feedbackEl.textContent = '❌ Sai rồi!';
+                hintEl.textContent = `Gợi ý: ${quizPool[current].hint}`;
+            }
+            disableOptions();
+            nextBtn.style.display = 'inline-block';
+        }
+
+        nextBtn.addEventListener('click', () => {
+            current++;
+            if (current < quizPool.length) {
+                showQuestion();
+            } else {
+                questionEl.textContent = '🎉 Bạn đã hoàn thành trò chơi!';
+                optionsEl.innerHTML = '';
+                feedbackEl.textContent = `Tổng điểm: ${score} / ${quizPool.length}`;
+                hintEl.textContent = '';
+                timerEl.textContent = '';
+                nextBtn.style.display = 'none';
+                saveHistory();
+                showHistory();
+                setup.style.display = 'block';
+            }
+        });
+
+        function saveHistory() {
+            let history = JSON.parse(localStorage.getItem('quizHistory') || '[]');
+            history.push({ date: new Date().toLocaleString(), score });
+            localStorage.setItem('quizHistory', JSON.stringify(history));
+        }
+
+        function showHistory() {
+            const history = JSON.parse(localStorage.getItem('quizHistory') || '[]');
+            if (history.length) {
+                historyEl.innerHTML = '<h3>Lịch sử điểm số:</h3><ul>' +
+                    history.map(item => `<li>${item.date} - ${item.score} điểm</li>`).join('') + '</ul>';
+            }
+        }
+
+        showHistory();
+    </script>
+</body>
+
+</html>
